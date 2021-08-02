@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ */
+function views_extend_install() {
+  module_set_weight('views_extend', 99999);
+}

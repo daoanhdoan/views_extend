@@ -1,0 +1,7 @@
+name: 'Views extend'
+type: module
+description: 'Adds better usability and some improvements to Core Views module.'
+core_version_requirement: ^9
+package: 'DNC - Views'
+dependencies:
+  - drupal:views

@@ -1,0 +1,11 @@
+views_extend:
+  js:
+    js/views_extend.js: {}
+  css:
+    component:
+      css/views_extend.css: {}
+  dependencies:
+    - core/jquery
+    - core/jquery.ui.position
+    - core/jquery.once
+    - core/drupalSettings

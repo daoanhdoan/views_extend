@@ -1,0 +1,221 @@
+<?php
+/**
+ * @file
+ */
+
+use Drupal\Core\Url as UrlObject;
+use Drupal\views\ViewExecutable;
+
+/**
+ * Preprocess the primary theme implementation for a view.
+ */
+function views_extend_preprocess(&$vars, $hook)
+{
+  if (!empty(preg_match("/.*_?table_?.*/", $hook))) {
+    $view = !empty($vars['view']) ? $vars['view'] : NULL;
+    if ($view) {
+      if (!empty($view->vbo_table)) {
+        $vars['view']->element['#attached']['library'][] = 'views_extend/views_extend';
+      }
+    }
+  }
+  if($hook === 'views_view') {
+    if (!empty($vars['view']->hide_default_pager)) {
+      $vars['pager'] = [];
+    }
+  }
+}
+
+/**
+ * Implements TEMPLATE_preprocess_views_view_field().
+ */
+function views_extend_preprocess_views_view_field(&$vars)
+{
+  if (isset($vars['view'])) {
+    if ($vars['field']->field == 'view' && !empty($vars['field']->options['alter']['trim_whitespace'])) {
+      $vars['output'] = trim($vars['output']);
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter()
+ */
+function views_extend_form_views_ui_edit_display_form_alter(&$form, $form_state)
+{
+  $view = $form_state->get('view');
+  $display_id = $form_state->get('display_id');
+  $executable = $view->getExecutable();
+  if ($form_state->get('section') === 'pager_options') {
+    if (!$executable->setDisplay($display_id)) {
+      $form['markup'] = ['#markup' => $this->t('Invalid display id @display', ['@display' => $display_id])];
+      return $form;
+    }
+    $pager = $executable->display_handler->getPlugin('pager');
+    if ($pager->usesExposed()) {
+      $form['options']['pager_options']['expose']['dropdown'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Dropdown Pager'),
+        '#default_value' => $pager->options['expose']['dropdown'],
+      );
+      $form['options']['pager_options']['expose']['prefix'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Dropdown Pager Prefix'),
+        '#default_value' => $pager->options['expose']['prefix'],
+        '#dependency' => array(
+          'edit-pager-options-expose-dropdown' => array(1),
+        )
+      );
+      $form['options']['pager_options']['expose']['suffix'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Dropdown Pager Suffix'),
+        '#default_value' => $pager->options['expose']['suffix'],
+        '#dependency' => array(
+          'edit-pager-options-expose-dropdown' => array(1),
+        )
+      );
+    }
+  }
+  if($form_state->get('section') === 'exposed_form_options') {
+    $plugin = $executable->display_handler->getPlugin('exposed_form');
+    $form['options']['exposed_form_options']['auto_hide_submit_buttons'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Auto hide submit buttons'),
+      '#default_value' => !empty($plugin->options['auto_hide_submit_buttons']) ? $plugin->options['auto_hide_submit_buttons'] : FALSE,
+      '#weight' => 98
+    );
+    if (isset($form['options']['exposed_form_options']['autosubmit_hide'])) {
+      $form['options']['exposed_form_options']['autosubmit_hide']['#weight'] = 99;
+      $form['options']['exposed_form_options']['autosubmit_hide']['#states'] = array(
+        '!visible' => array(
+          ':input[name="exposed_form_options[auto_hide_submit_buttons]"]' => array('checked' => TRUE),
+        ),
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function views_extend_form_views_exposed_form_alter(&$form, &$form_state, $form_id)
+{
+  $view = $form_state->get('view');
+  if (!$view) {
+    return;
+  }
+
+  $form['#view'] = $view;
+
+  $pager = $view->display_handler->getPlugin('pager');
+  if ($pager->usesExposed()) {
+    $items_per_page = !empty($_GET['items_per_page']) ? $_GET['items_per_page'] : (int)$pager->options['items_per_page'];
+    if (!empty($view->hide_default_pager)) {
+      $form['items_per_page'] = [
+        '#type' => 'hidden',
+        '#value' => $items_per_page
+      ];
+    }
+    if (!empty($pager->options['expose']['dropdown']) && empty($view->hide_default_pager)) {
+      $items = views_extend_items_per_page_links($view);
+      $form['items_per_page'] = [
+        '#type' => 'hidden',
+        '#value' => $items_per_page
+      ];
+
+      $form['items_per_page_link'] = [
+        '#type' => 'container',
+        '#attributes' => array('class' => array('views-extend-pager clearfix')),
+      ];
+      $form['items_per_page_link']['items'] = array(
+        '#type' => 'dropbutton',
+        '#links' => $items,
+        '#attributes' => array('class' => array('views-extend-pager-dropbutton'))
+      );
+      if (!empty($pager->options['expose']['prefix'])) {
+        $form['items_per_page_link']['items']['#prefix'] = $pager->options['expose']['prefix'];
+      }
+      if (!empty($pager->options['expose']['suffix'])) {
+        $form['items_per_page_link']['items']['#suffix'] = $pager->options['expose']['suffix'];
+      }
+      $form['#attached']['library'][] = 'views_extend/views_extend';
+    }
+  }
+  $plugin = $view->display_handler->getPlugin('exposed_form');
+  if(!empty($plugin->options['auto_hide_submit_buttons'])) {
+    $input = $view->getExposedInput();
+    if (empty($input)) {
+      $form['#attributes']['class'][] = 'auto-hide-submit-buttons';
+      $form['#attached']['library'][] = 'views_extend/views_extend';
+    }
+  }
+}
+
+/**
+ * Implements @see hook_views_pre_build().
+ */
+function views_extend_views_pre_build($view)
+{
+  $view->hide_default_pager = FALSE;
+  $areas = ['header', 'footer'];
+  foreach ($areas as $area) {
+    if (!empty($view->{$area})) {
+      foreach ($view->{$area} as $handler) {
+        if($handler->getPluginId() === 'views_extend_pager' || $handler->getPluginId() === 'views_extend_result') {
+          if (!empty($handler->options['hide_default_pager'])) {
+            $view->hide_default_pager = TRUE;
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Build item per pager link
+ */
+function views_extend_items_per_page_links(ViewExecutable $view) {
+  $pager = $view->display_handler->getPlugin('pager');
+  $items = array();
+  if ($pager->getPluginId() == 'full' || $pager->getPluginId() == 'mini') {
+    $options = explode(',', $pager->options['expose']['items_per_page_options']);
+    if (is_array($options)) {
+      $per_page = !empty($_GET['items_per_page']) ? $_GET['items_per_page'] : (int)$view->getItemsPerPage();
+      $per_page = ($per_page == 'All') ? 0 : $per_page;
+      $query = clone \Drupal::request()->query;
+      $items_per_page = trim($per_page);
+      $current_path = \Drupal::service('path.current')->getPath();
+
+      if ($items_per_page) {
+        $query->set('items_per_page', trim($items_per_page));
+        $items[] = array(
+          'query' => $query->all(),
+          'title' => $items_per_page,
+          'url' => UrlObject::fromUri('internal:' . $current_path, ['absolute' => TRUE]),
+          'attributes' => array('class' => array('items-per-page'))
+        );
+      }
+      foreach ($options as $option) {
+        if (trim($option) !== $items_per_page) {
+          $query->set('items_per_page', trim($option));
+          $items[] = array(
+            'query' => $query->all(),
+            'title' => $option,
+            'url' => UrlObject::fromUri('internal:' . $current_path, ['absolute' => TRUE]),
+            'attributes' => array('class' => array($items_per_page == $option ? 'items-per-page' : ''))
+          );
+        }
+      }
+      if (!empty($pager->options['expose']['items_per_page_options_all']) && !empty($pager->options['expose']['items_per_page_options_all_label']) && ($items_per_page !== 'All')) {
+        $query->set('items_per_page', 'All');
+        $items[] = array(
+          'title' => t('All'),
+          'url' => UrlObject::fromUri('internal:' . $current_path, ['absolute' => TRUE]),
+          'query' => $query->all(),
+          'attributes' => array('class' => array($items_per_page == $option ? 'items-per-page' : ''))
+        );
+      }
+    }
+  }
+  return $items;
+}
