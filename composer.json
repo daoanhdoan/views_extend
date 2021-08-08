@@ -2,11 +2,14 @@
     "name" : "daoanhdoan/views_extend",
     "description": "Views extend - Adds better usability and some improvements to Core Views module.",
     "type" : "drupal-custom-module",
-    "license": "GPL-2.0",
+    "license": "GPL-2.0+",
     "extra": {
         "installer-name": "views_extend"
     },
     "require": {
-        "drupal/views": "*"
+        "drupal/views": "*",
+        "drupal/filter": "*",
+        "drupal/user": "*",
+        "drupal/system": "*"
     }
 }
