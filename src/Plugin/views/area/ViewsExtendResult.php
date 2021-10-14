@@ -27,10 +27,10 @@ class ViewsExtendResult extends AreaPluginBase
     $options = parent::defineOptions();
 
     $options['content'] = [
-      'default' => $this->t('Displaying @start - @end of @total, @items_per_page rows per page.'),
+      'default' => $this->t('Displaying @start - @end of @total, @items_per_page rows per page. @pager'),
     ];
     $options['hide_default_pager'] = [
-      'default' => FALSE,
+      'default' => TRUE,
     ];
     $options['element_type'] = ['default' => ''];
     $options['element_class'] = ['default' => ''];

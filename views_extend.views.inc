@@ -18,6 +18,12 @@ function views_extend_views_data_alter(&$data) {
       'id' => 'views_extend_text',
     ],
   ];
+  $data['views']['views_extend_no_results_text'] = [
+    'title' => t('Views Extend: No results text'),
+    'area' => [
+      'id' => 'views_extend_no_results_text',
+    ],
+  ];
   $data['views']['pager'] = array(
     'title' => t('Pager'),
     'help' => t('Provide pager for this view.'),
