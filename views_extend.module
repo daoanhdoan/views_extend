@@ -74,6 +74,7 @@ function views_extend_form_views_ui_edit_display_form_alter(&$form, $form_state)
           'edit-pager-options-expose-dropdown' => array(1),
         )
       );
+      $form['options']['pager_options']['expose']['items_per_page_options']['#default_value'] = "5, 10, 25, 50, 100, 200, 500, 1000";
     }
   }
   if($form_state->get('section') === 'exposed_form_options') {
