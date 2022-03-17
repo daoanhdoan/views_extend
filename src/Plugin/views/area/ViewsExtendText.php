@@ -27,6 +27,7 @@ class ViewsExtendText extends TokenizeAreaPluginBase {
     $options = parent::defineOptions();
     $options['content'] = ['default' => ''];
     $options['alter'] = ['default' => array(
+      'make_link' => array('default' => ''),
       'path' => array('default' => ''),
       'absolute' => array('default' => FALSE),
       'external' => array('default' => FALSE),
